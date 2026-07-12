@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Bridge mark favicon (grayscale, inline) -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cg stroke='%23808080' stroke-width='3.2' stroke-linecap='round'%3E%3Cline x1='7' y1='15' x2='30' y2='15'/%3E%3Cline x1='18' y1='33' x2='41' y2='33'/%3E%3Cline x1='15' y1='15' x2='33' y2='33'/%3E%3C/g%3E%3C/svg%3E"
+    />
+
+    <title>LOLA OS — Onchain tools for AI agents</title>
+    <meta
+      name="description"
+      content="One decorator connects any AI agent to blockchains, oracles, and APIs. Works with Ethereum, Polygon, and Solana. Runs on your machine. Free forever, Apache-2.0."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lolaos.online/" />
+    <meta property="og:title" content="LOLA OS — Onchain tools for AI agents" />
+    <meta
+      property="og:description"
+      content="Five minutes. One decorator. Any blockchain. Works with Ethereum, Polygon, and Solana — all at once."
+    />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LOLA OS — Onchain tools for AI agents" />
+    <meta
+      name="twitter:description"
+      content="Five minutes. One decorator. Any blockchain. Runs on your machine. Free forever, Apache-2.0."
+    />
+
+    <!-- Theme color adapts to the active scheme -->
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Resolve the color theme before first paint to avoid a flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('lola-theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
+
+    <style>
+      html { background: #fafafa; }
+      html.dark { background: #0a0a0a; }
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        background: #fafafa;
+        transition: opacity 0.3s ease;
+      }
+      html.dark #app-loader { background: #0a0a0a; }
+      #app-loader .spinner {
+        width: 34px;
+        height: 34px;
+        border-radius: 9999px;
+        border: 3px solid #e5e5e5;
+        border-top-color: #171717;
+        animation: lola-spin 0.8s linear infinite;
+      }
+      html.dark #app-loader .spinner {
+        border-color: #262626;
+        border-top-color: #f5f5f5;
+      }
+      @keyframes lola-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        #app-loader .spinner { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <div id="app-loader" aria-hidden="true">
+      <div class="spinner"></div>
+    </div>
+
+    <script type="module" src="/src/app/main.jsx"></script>
+
+    <script>
+      window.addEventListener('load', function () {
+        var loader = document.getElementById('app-loader');
+        if (!loader) return;
+        loader.style.opacity = '0';
+        setTimeout(function () {
+          loader.remove();
+        }, 300);
+      });
+    </script>
+  </body>
+</html>
