@@ -167,8 +167,6 @@ This is a monorepo of loosely-coupled subprojects. Work inside one at a time.
 | [`lola/lola-sdks/go`](./lola/lola-sdks/go) | Go SDK. Published standalone at [`lola-os/lola-go`](https://github.com/lola-os/lola-go). |
 | [`lola/lola-ui`](./lola/lola-ui) | Next.js documentation + landing site (MDX, grayscale design system) |
 | [`lola/lola-infra`](./lola/lola-infra) | Docker Compose harness, Dockerfile, deploy scripts, example `plan.json` |
-| [`lolaos-frontend`](./lolaos-frontend) | Marketing site (Vite + React 19 + three.js) |
-| [`documentation/do`](./documentation/do) | Product blueprint, branding, and roadmap |
 
 ## Supported chains
 
