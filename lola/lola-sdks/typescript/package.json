@@ -1,0 +1,37 @@
+{
+  "name": "lola-os",
+  "version": "1.0.0-test.0",
+  "description": "LOLA OS TypeScript/JavaScript SDK — add @lolaTool to any function and it can talk to blockchains, oracles, and APIs.",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "blockchain",
+    "ai-agents",
+    "web3",
+    "ethereum",
+    "solana",
+    "langchain"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node run-tests.js",
+    "pretest": "tsc -p tsconfig.test.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10"
+  },
+  "optionalDependencies": {
+    "ws": "^8.16.0"
+  }
+}

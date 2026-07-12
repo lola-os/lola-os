@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lola-os"
+version = "1.0.0"
+description = "LOLA OS Python SDK — add @lola_tool to any function and it can talk to blockchains, oracles, and APIs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+authors = [{ name = "LOLA OS contributors" }]
+keywords = ["blockchain", "ai-agents", "web3", "ethereum", "solana", "langchain", "crewai"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.optional-dependencies]
+websocket = ["websocket-client>=1.6"]
+dev = ["pytest>=7.4", "pytest-asyncio>=0.21", "mypy>=1.5"]
+
+[project.urls]
+Homepage = "https://lola-os.dev"
+Documentation = "https://lola-os.dev/docs"
+Repository = "https://github.com/lola-os/lola-sdks"
+
+[tool.setuptools.packages.find]
+include = ["lola_os*"]
+
+[tool.setuptools.package-data]
+lola_os = ["bin/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
