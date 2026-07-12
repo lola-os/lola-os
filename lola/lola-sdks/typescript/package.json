@@ -3,6 +3,14 @@
   "version": "1.0.0-test.0",
   "description": "LOLA OS TypeScript/JavaScript SDK — add @lolaTool to any function and it can talk to blockchains, oracles, and APIs.",
   "license": "Apache-2.0",
+  "homepage": "https://lola-os.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lola-os/lola-os.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lola-os/lola-os/issues"
+  },
   "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
