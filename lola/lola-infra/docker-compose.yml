@@ -1,0 +1,74 @@
+name: lola-os
+
+services:
+  lola-core:
+    build:
+      context: ..
+      dockerfile: lola-infra/Dockerfile
+    container_name: lola-core
+    # JSON-RPC over TCP, reachable from the host and from other
+    # containers — this is what an SDK or test harness running outside
+    # this compose network would connect to.
+    ports:
+      - "8899:8899" # JSON-RPC TCP
+      - "8080:8080" # dashboard + proxied WebSocket (see `dashboard` service below)
+    environment:
+      # Set a real passphrase for anything beyond a throwaway test vault.
+      LOLA_VAULT_PASSPHRASE: ${LOLA_VAULT_PASSPHRASE:-test-passphrase-change-me}
+      LOLA_MODE: ${LOLA_MODE:-read_only}
+      LOLA_LOG_FORMAT: json
+    volumes:
+      # Persist the vault and registry across container restarts.
+      - lola-data:/home/nonroot/.lola
+      # Pre-configured config.yaml with the HITL WebSocket channel
+      # enabled, for the optional dashboard demo. Mounted read-only since
+      # nothing in the `serve` flow writes to config.yaml.
+      - ./config.docker.yaml:/home/nonroot/.lola/config.yaml:ro
+      # Mount example plans read-only so `docker compose exec` can run
+      # `lola replay` against them without rebuilding the image.
+      - ./examples:/examples:ro
+    healthcheck:
+      # `lola doctor` doubles as a healthcheck: it exits non-zero if
+      # config/registry/vault aren't in a usable state. RPC checks will
+      # fail here if no real RPC URLs are reachable from inside the
+      # container — that's expected in an offline test environment and
+      # does not block the container from being considered "started".
+      test: ["CMD", "/usr/local/bin/lola", "doctor"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional minimal HITL dashboard demo: a static page that connects to
+  # lola-core's WebSocket approval channel and renders incoming requests
+  # with Approve/Deny buttons. Not required for v1.0 — included to show
+  # how a custom approval UI plugs in, per the blueprint's "we only
+  # provide the data; let the developer's creativity lead" philosophy.
+  #
+  # IMPORTANT: lola-core's WebSocket server deliberately refuses to bind
+  # to anything but a loopback address (see internal/hitl/websocket.go),
+  # since that protocol has no authentication. A browser on the host
+  # can't reach a container's internal loopback directly, even via
+  # `network_mode: "service:lola-core"` — that trick shares the network
+  # *namespace* between containers, which helps another *process* in that
+  # namespace reach 127.0.0.1:8765, but a browser on the host is not in
+  # that namespace. So this nginx container does two things at once,
+  # inside the shared namespace: serves the static dashboard on :8080
+  # (exposed to the host via lola-core's port mapping above, since they
+  # share a namespace) and reverse-proxies /ws on that same port to
+  # lola-core's actual 127.0.0.1:8765 — without ever weakening lola-core's
+  # loopback-only bind.
+  dashboard:
+    image: nginx:1.27-alpine
+    container_name: lola-dashboard-demo
+    network_mode: "service:lola-core"
+    depends_on:
+      - lola-core
+    volumes:
+      - ./dashboard/index.html:/usr/share/nginx/html/index.html:ro
+      - ./dashboard/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    profiles:
+      - dashboard # `docker compose --profile dashboard up` to include this
+
+volumes:
+  lola-data:

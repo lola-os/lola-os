@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 15%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --border: 0 0% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 0 0% 5.5%;
+    --foreground: 0 0% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --border: 0 0% 18%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 96%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 96%;
+  }
+
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-800 dark:bg-gray-950 dark:text-gray-200;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-sans text-gray-900 dark:text-gray-50;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  ::selection {
+    @apply bg-gray-300 dark:bg-gray-700;
+  }
+
+  /* Respect prefers-reduced-motion, per branding.md section 8. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Documentation prose. Deliberately narrow measure (≈70ch), generous
+   * vertical rhythm, restrained borders — modeled after the better
+   * developer-docs sites (Stripe, Vercel), not a default Tailwind
+   * Typography reset.
+   */
+  .docs-prose {
+    @apply max-w-[42rem] text-[0.975rem] leading-7;
+  }
+  .docs-prose > *:first-child {
+    margin-top: 0;
+  }
+  .docs-prose h1 {
+    @apply text-3xl font-bold mb-3 mt-0;
+  }
+  .docs-prose h2 {
+    @apply text-xl font-semibold mb-4 mt-14 pb-0;
+  }
+  .docs-prose h3 {
+    @apply text-base font-semibold mb-3 mt-9 text-gray-900 dark:text-gray-100;
+  }
+  .docs-prose > p {
+    @apply mb-5 text-gray-600 dark:text-gray-400;
+  }
+  .docs-prose > ul, .docs-prose > ol {
+    @apply mb-5 space-y-2 text-gray-600 dark:text-gray-400;
+  }
+  .docs-prose ul { @apply list-none pl-0; }
+  .docs-prose ul > li { @apply relative pl-5; }
+  .docs-prose ul > li::before {
+    content: "";
+    @apply absolute left-0 top-[0.6em] h-1 w-1 rounded-full bg-gray-400 dark:bg-gray-600;
+  }
+  .docs-prose ol { @apply list-decimal pl-5 marker:text-gray-400 dark:marker:text-gray-600 marker:font-medium; }
+  .docs-prose li > p { @apply mb-0; }
+  .docs-prose a {
+    @apply font-medium text-gray-900 underline decoration-gray-300 decoration-1 underline-offset-2 transition-colors hover:decoration-gray-500 dark:text-gray-50 dark:decoration-gray-700 dark:hover:decoration-gray-400;
+  }
+  .docs-prose strong {
+    @apply font-semibold text-gray-900 dark:text-gray-100;
+  }
+  .docs-prose > p > code, .docs-prose li > code, .docs-prose td > code, .docs-prose th > code {
+    @apply rounded-md border border-gray-200 bg-gray-100 px-[0.35em] py-[0.15em] text-[0.85em] font-medium text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200;
+  }
+  .docs-prose pre {
+    @apply mb-6 mt-2 rounded-xl overflow-x-auto;
+  }
+  .docs-prose pre code {
+    @apply border-0 bg-transparent p-0;
+  }
+  .docs-prose hr {
+    @apply my-12 border-gray-200 dark:border-gray-800;
+  }
+  .docs-prose table {
+    @apply mb-6 w-full border-collapse text-sm;
+  }
+  .docs-prose thead th {
+    @apply border-b border-gray-200 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400;
+  }
+  .docs-prose tbody td {
+    @apply border-b border-gray-100 px-4 py-3 align-top text-gray-600 dark:border-gray-900 dark:text-gray-400;
+  }
+  .docs-prose tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}

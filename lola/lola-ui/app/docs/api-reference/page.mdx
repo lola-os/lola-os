@@ -1,0 +1,153 @@
+# API Reference
+
+Every SDK exposes the same operations, named per-language convention.
+Wire-level parameter names (what actually crosses the JSON-RPC boundary
+to `lola-core`) are identical across all three — see each function's RPC
+method name below if you're debugging at that layer.
+
+## Balances
+
+### `get_balance` / `getBalance` / `GetBalance`
+
+Returns the native asset balance for an address.
+
+| | |
+|---|---|
+| RPC method | `get_balance` |
+| Params | `chain`, `address` |
+| Returns | `{ address, token, raw_value, decimals, symbol }` |
+
+```python
+get_balance("ethereum", "0x...")
+```
+```ts
+await getBalance("ethereum", "0x...")
+```
+```go
+client.GetBalance(ctx, "ethereum", "0x...", nil)
+```
+
+### `get_token_balance` / `getTokenBalance` / `GetTokenBalance`
+
+Same shape, for an ERC20/SPL token. RPC method: `get_token_balance`.
+Params: `chain`, `address`, `token_address`.
+
+## Contract calls
+
+### `call_contract` / `callContract` / `CallContract`
+
+Read-only call. If `abi` is omitted, `lola-core` fetches a verified ABI
+from the configured block explorer automatically.
+
+| | |
+|---|---|
+| RPC method | `call_contract` |
+| Params | `chain`, `contract`, `method`, `args`, `abi` (optional) |
+| Throws | `ABIMismatchError` if `method`/`args` don't match the ABI |
+
+### `execute_contract` / `executeContract` / `ExecuteContract`
+
+State-changing call: builds, validates, optionally requests HITL
+approval, signs, and broadcasts.
+
+| | |
+|---|---|
+| RPC method | `execute_contract` |
+| Params | `chain`, `from`, `contract`, `method`, `args`, `abi`, `value_wei`, `idempotency_key`, `key_name` |
+| Returns | `{ tx_hash, status }` |
+| Throws | `ABIMismatchError`, `BudgetExceededError`, `ApprovalDeniedError` |
+
+## Transactions
+
+### `send_transaction` / `sendTransaction` / `SendTransaction`
+
+Native asset transfer. RPC method: `send_transaction`. Params: `chain`,
+`from`, `to`, `value_wei`, `idempotency_key`, `key_name`.
+
+### `transfer_token` / `transferToken` / `TransferToken`
+
+ERC20/SPL transfer (calls the token's standard `transfer` method). RPC
+method: `transfer_token`. Params: `chain`, `from`, `to`, `token`,
+`amount_raw`, `idempotency_key`, `key_name`.
+
+### `swap_tokens` / `swapTokens` / (Go: not separately exposed)
+
+A thin wrapper around `execute_contract` against a router contract — LOLA
+OS doesn't hardcode any DEX's routing logic. Supply the router's address,
+method, args, and ABI, same as any other contract call.
+
+## Oracles and external data
+
+### `get_price_from_oracle` / `getPriceFromOracle`
+
+Reads the latest Chainlink price for a pair (e.g. `"ETH/USD"`) directly
+from the feed's on-chain aggregator contract.
+
+| | |
+|---|---|
+| RPC method | `get_price` |
+| Params | `chain`, `pair` |
+| Returns | `{ pair, price, decimals, updated_at }` |
+
+### `fetch_external_api` / `fetchExternalApi`
+
+Rate-limited, retrying GET request through `lola-core`'s REST gateway.
+
+| | |
+|---|---|
+| RPC method | `fetch_external_api` |
+| Params | `url` |
+| Returns | Decoded JSON response |
+
+## Batch operations
+
+### `multi_operation` / `multiOperation`
+
+Runs a client-side sequence of any of the above, stopping on the first
+error by default (configurable). Not the same as
+[`lola replay`](/docs/operational/replay) — see the
+[FAQ](/docs/faq#replay) for when to use which.
+
+## Introspection
+
+### `budget_status` / `budgetStatus` / `BudgetStatus`
+
+Current session's spend snapshot: `{ gas_spent, usd_spent,
+requests_this_minute, paused, paused_reason }`.
+
+### `vault_list` / `vaultKeyNames` / `VaultKeyNames`
+
+Lists stored vault entry names — never their values.
+
+## Context overrides
+
+Every operation above accepts a scoped override for `chain`, `rpc_url`,
+`mode`, `budget_max_gas`, `budget_max_usd`, and `hitl_timeout_seconds`,
+applied for the duration of a single call or block:
+
+```python
+with lola.override(chain="polygon", budget_max_usd=5.0):
+    result = execute_contract(...)
+```
+```ts
+await withOverrides({ chain: "polygon", budgetMaxUsd: 5.0 }, async () => {
+  const result = await executeContract(...);
+});
+```
+```go
+ctx := lola.WithOverrides(ctx, &lola.Overrides{Chain: "polygon"})
+result, err := client.ExecuteContract(ctx, ...)
+```
+
+## Errors
+
+All three SDKs map `lola-core`'s JSON-RPC error codes to typed
+exceptions/errors with the same names (adjusted per language convention):
+
+| Code | Python | TypeScript | Go |
+|---|---|---|---|
+| `-33001` | `BudgetExceededError` | `BudgetExceededError` | `BudgetExceededError` |
+| `-33002` | `ABIMismatchError` | `ABIMismatchError` | `ABIMismatchError` |
+| `-33003` | `RPCConnectionError` | `RPCConnectionError` | (wrapped `error`) |
+| `-33004` | `ApprovalDeniedError` | `ApprovalDeniedError` | (wrapped `error`) |
+| `-33005` | `UnknownChainError` | `UnknownChainError` | (wrapped `error`) |

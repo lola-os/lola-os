@@ -1,0 +1,135 @@
+# Configuration Reference
+
+LOLA OS reads `~/.lola/config.yaml`, overlays `LOLA_*` environment
+variables on top, and falls back to built-in defaults for anything
+unset. You don't need a config file at all to get started — see
+[Getting Started](/docs/getting-started).
+
+## Top-level keys
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `mode` | string | `read_only` | `read_only` refuses all write operations; `live` allows them. |
+
+Environment override: `LOLA_MODE`
+
+## `chains`
+
+A map of chain name to its connection settings.
+
+```yaml
+chains:
+  ethereum:
+    name: ethereum
+    kind: evm
+    rpc_url: https://eth.llamarpc.com
+    chain_id: 1
+    explorer_api_url: https://api.etherscan.io/api
+    explorer_api_key: ""
+  solana:
+    name: solana
+    kind: solana
+    rpc_url: https://api.mainnet-beta.solana.com
+```
+
+| Key | Type | Description |
+|---|---|---|
+| `kind` | `evm` \| `solana` | Which adapter handles this chain. |
+| `rpc_url` | string | JSON-RPC endpoint. |
+| `chain_id` | int | EVM chain ID (ignored for Solana). |
+| `explorer_api_url` | string | Etherscan-compatible ABI-fetch endpoint, used for automatic ABI resolution. |
+| `explorer_api_key` | string | API key for the explorer, if required. |
+
+Environment override: `LOLA_RPC_URL_<CHAINNAME>` (e.g. `LOLA_RPC_URL_ETHEREUM`)
+
+## `vault`
+
+| Key | Default | Description |
+|---|---|---|
+| `path` | `~/.lola/vault.enc` | Encrypted vault file location. |
+| `scrypt_n` | `32768` | scrypt cost parameter N. |
+| `scrypt_r` | `8` | scrypt cost parameter r. |
+| `scrypt_p` | `1` | scrypt cost parameter p. |
+
+Environment override: `LOLA_VAULT_PATH`, and `LOLA_VAULT_PASSPHRASE` for
+the passphrase itself (never stored in config.yaml).
+
+## `hitl`
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Require approval for write operations. |
+| `timeout_seconds` | `120` | How long to wait for a decision before treating it as denied. |
+| `websocket_enabled` | `false` | Use the WebSocket approval channel instead of the console prompt. |
+| `websocket_addr` | `127.0.0.1:8765` | Loopback-only address for the WebSocket server. |
+
+Environment override: `LOLA_HITL_TIMEOUT`
+
+## `logging`
+
+| Key | Default | Description |
+|---|---|---|
+| `level` | `info` | `debug` \| `info` \| `warn` \| `error` |
+| `format` | `rich` | `rich` (colored, icon-prefixed) or `json` (structured lines) |
+
+Environment override: `LOLA_LOG_LEVEL`, `LOLA_LOG_FORMAT`
+
+## `registry`
+
+| Key | Default | Description |
+|---|---|---|
+| `db_path` | `~/.lola/lola.db` | SQLite database for transactions, nonces, and execution plans. |
+
+Environment override: `LOLA_DB_PATH`
+
+## `budget`
+
+The circuit breaker. See the [Security Guide](/docs/security#budget-circuit-breaker)
+for how this behaves in practice.
+
+| Key | Default | Description |
+|---|---|---|
+| `max_gas_spend_per_session` | `0.5` | Native-unit (e.g. ETH) gas budget per `lola-core` process lifetime. |
+| `max_usd_spend_per_session` | `50.0` | USD-equivalent budget per session. |
+| `max_requests_per_minute` | `60` | Rate limit across all RPC methods. |
+| `action` | `pause` | `pause` (stop all writes), `notify` (log only), or `deny` (reject just the offending call). |
+
+Environment override: `LOLA_BUDGET_MAX_GAS`, `LOLA_BUDGET_MAX_USD`, `LOLA_BUDGET_ACTION`
+
+## `oracle`
+
+| Key | Default | Description |
+|---|---|---|
+| `chainlink_feeds` | `{ "ETH/USD": "0x5f4e..." }` | Map of pair name to Chainlink aggregator contract address. |
+| `rest_timeout_ms` | `5000` | Timeout for generic REST fetches. |
+| `rest_max_retries` | `3` | Retry count with exponential backoff for REST fetches. |
+
+## A complete example
+
+```yaml
+mode: live
+
+chains:
+  sepolia:
+    name: sepolia
+    kind: evm
+    rpc_url: https://rpc.sepolia.org
+    chain_id: 11155111
+
+vault:
+  path: ~/.lola/vault.enc
+
+hitl:
+  enabled: true
+  timeout_seconds: 60
+
+logging:
+  level: info
+  format: rich
+
+budget:
+  max_gas_spend_per_session: 0.1
+  max_usd_spend_per_session: 10.0
+  max_requests_per_minute: 30
+  action: pause
+```

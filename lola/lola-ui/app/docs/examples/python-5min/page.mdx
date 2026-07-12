@@ -1,0 +1,91 @@
+# Python in 5 Minutes
+
+The complete walkthrough from zero to a signed transaction, in one file.
+
+## 1. Install
+
+```bash
+cd lola-core && go build -o bin/lola ./cmd/lola
+export LOLA_CORE_BINARY=$(pwd)/bin/lola
+cd ../lola-sdks/python && pip install -e .
+```
+
+## 2. Set up your vault
+
+```bash
+lola vault init
+lola vault add deployer
+export LOLA_VAULT_PASSPHRASE="your-passphrase"
+```
+
+## 3. Check your environment
+
+```bash
+lola doctor --vault-passphrase "$LOLA_VAULT_PASSPHRASE"
+```
+
+## 4. Write the agent
+
+```python
+from lola_os import lola_tool, get_balance, send_transaction, BudgetExceededError
+
+@lola_tool
+def check_balance(address: str) -> dict:
+    """Returns the native balance for an Ethereum address."""
+    return get_balance("ethereum", address)
+
+
+@lola_tool
+def pay_someone(from_address: str, to_address: str, amount_wei: str) -> dict:
+    """Sends a native transfer, signed with the 'deployer' vault key."""
+    try:
+        return send_transaction(
+            chain="sepolia",
+            from_address=from_address,
+            to=to_address,
+            value_wei=amount_wei,
+            key_name="deployer",
+            idempotency_key=f"pay-{from_address}-{to_address}-{amount_wei}",
+        )
+    except BudgetExceededError as e:
+        return {"error": f"Budget exceeded: {e}"}
+
+
+if __name__ == "__main__":
+    balance = check_balance("0xYourAddress")
+    print("Balance:", balance)
+
+    receipt = pay_someone("0xYourAddress", "0xRecipient", "1000000000000000")
+    print("Receipt:", receipt)
+```
+
+## 5. Run it
+
+```bash
+python agent.py
+```
+
+```
+Balance: {'address': '0x...', 'token': '', 'raw_value': '2500000000000000000', 'decimals': 18, 'symbol': 'ETH'}
+
+──────────────────────────────────────────────────────
+⚠️  APPROVAL REQUIRED
+──────────────────────────────────────────────────────
+  Chain:     sepolia
+  From:      0xYourAddress
+  To:        0xRecipient
+  Value:     1000000000000000 wei
+──────────────────────────────────────────────────────
+  [a]pprove / [d]eny / [s]kip: a
+✅ Approved.
+
+Receipt: {'tx_hash': '0x...', 'status': 'pending'}
+```
+
+That's the whole loop: one decorator, real balance reads, a signed
+transaction with human approval and an idempotency key to prevent
+duplicate sends if your agent retries the call. From here:
+
+- Swap `send_transaction` for [`execute_contract`](/docs/api-reference#contract-calls) to call a real contract.
+- Add a [budget](/docs/security#budget-circuit-breaker) to cap session spend.
+- Move repeatable sequences into a [`lola replay`](/docs/examples/replay-plan) plan instead of inline code.

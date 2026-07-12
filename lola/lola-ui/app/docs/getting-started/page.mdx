@@ -1,0 +1,114 @@
+# Getting Started
+
+This walks through installing LOLA OS, verifying your environment with
+`lola doctor`, and making your first call — read balance, then a
+state-changing transaction.
+
+## 1. Build lola-core
+
+LOLA OS ships as source; there's no hosted binary to download yet, so
+build the engine first.
+
+```bash
+cd lola-core
+go mod tidy
+go build -o bin/lola ./cmd/lola
+```
+
+Put `bin/lola` somewhere on your `$PATH`, or remember its path — you'll
+point the SDK at it next.
+
+## 2. Install an SDK
+
+Pick the language your agent runs in.
+
+```bash
+# Python
+pip install -e lola-sdks/python
+
+# TypeScript / JavaScript
+cd lola-sdks/typescript && npm install && npm run build
+
+# Go
+cd lola-sdks/go && go mod tidy && go build ./...
+```
+
+If you didn't put `lola` on your `$PATH`, set this so the SDK can find it:
+
+```bash
+export LOLA_CORE_BINARY=/path/to/lola-core/bin/lola
+```
+
+## 3. Create your vault and run `lola doctor`
+
+Your private keys live in an encrypted vault on disk — never in an
+environment variable, never in plaintext.
+
+```bash
+lola vault init
+lola vault add deployer
+```
+
+You'll be prompted for a vault passphrase, then the private key itself
+(input is hidden either way). Now check that everything's wired up
+correctly:
+
+```bash
+export LOLA_VAULT_PASSPHRASE="your-passphrase"
+lola doctor
+```
+
+`lola doctor` checks RPC connectivity for every configured chain, your
+`config.yaml` syntax, vault integrity, and the local registry database.
+You'll get a pass/fail table with a fix suggestion for anything that's
+wrong — see the [full `lola doctor` reference](/docs/operational/doctor).
+
+## 4. Read a balance
+
+```python
+from lola_os import get_balance
+
+balance = get_balance("ethereum", "0xYourAddress")
+print(balance)
+# {'address': '0x...', 'token': '', 'raw_value': '1500000000000000000', 'decimals': 18, 'symbol': 'ETH'}
+```
+
+This works with zero configuration beyond a working RPC URL — LOLA OS
+ships with public RPC endpoints configured by default for Ethereum,
+Sepolia, Polygon, and Solana mainnet (see the
+[configuration reference](/docs/configuration) to point at your own).
+
+## 5. Make your first write
+
+Writes are different: by default, LOLA OS runs in `read_only` mode and
+refuses them. Switch to `live` mode in `~/.lola/config.yaml`:
+
+```yaml
+mode: live
+```
+
+Now a write will prompt for your approval in the terminal before
+broadcasting (human-in-the-loop is on by default too):
+
+```python
+from lola_os import send_transaction
+
+receipt = send_transaction(
+    chain="sepolia",
+    from_address="0xYourAddress",
+    to="0xRecipient",
+    value_wei="1000000000000000",  # 0.001 ETH
+    key_name="deployer",
+)
+print(receipt)  # {"tx_hash": "0x...", "status": "pending"}
+```
+
+You'll see a rich terminal prompt summarizing the transaction before it
+asks you to approve, deny, or skip it.
+
+## What's next
+
+- [Configuration Reference](/docs/configuration) — every setting, including the budget circuit breaker.
+- [Security Guide](/docs/security) — how the vault, HITL, and budget breaker fit together.
+- [`lola replay`](/docs/operational/replay) — automate a sequence of operations from a JSON plan.
+- [Python in 5 minutes](/docs/examples/python-5min) — the same walkthrough as above, in one file.

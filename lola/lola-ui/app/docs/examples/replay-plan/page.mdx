@@ -1,0 +1,92 @@
+# Replay Plan Walkthrough
+
+A real `plan.json` that reads a token's supply, asserts it's sane, sends
+a small transfer, and waits — the same file shipped at
+`lola-infra/examples/plan.json`.
+
+## The plan
+
+```json
+{
+  "description": "Read an ERC20 token's total supply, assert it's non-zero, then send a small native transfer.",
+  "operations": [
+    {
+      "id": "read_supply",
+      "type": "call_contract",
+      "chain": "sepolia",
+      "contract": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "method": "totalSupply",
+      "args": [],
+      "abi": "[{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"type\":\"function\"}]"
+    },
+    {
+      "id": "check_supply",
+      "type": "assert",
+      "expression": "${read_supply.output} > 0"
+    },
+    {
+      "id": "send_native",
+      "type": "send_transaction",
+      "chain": "sepolia",
+      "from": "0xYourSendingAddress",
+      "to": "0xYourRecipientAddress",
+      "amount": "1000000000000000",
+      "idempotency_key": "demo-plan-send-001"
+    },
+    {
+      "id": "wait_a_moment",
+      "type": "wait",
+      "seconds": 2
+    }
+  ]
+}
+```
+
+## Step by step
+
+1. **`read_supply`** — a read-only `call_contract` against the token's
+   `totalSupply()` method. No transaction, no approval needed.
+2. **`check_supply`** — an `assert` referencing `${read_supply.output}`,
+   the decoded return value from step 1. If the token's supply were
+   somehow zero (a sign something's misconfigured), the plan halts here.
+3. **`send_native`** — a real transaction. Note the `idempotency_key`: if
+   this plan were re-run with the same key within 24 hours, it would
+   return the cached receipt instead of sending a second transaction.
+4. **`wait_a_moment`** — a 2-second pause, useful when a later step (not
+   present in this minimal example) needs the previous transaction to
+   propagate before checking its receipt.
+
+## Running it
+
+```bash
+# Safe first pass — nothing is broadcast
+lola replay plan.json --dry-run
+
+# Against a local fork, so even the "real" run costs nothing
+lola replay plan.json --fork-url http://127.0.0.1:8545
+
+# For real, with a saved receipt
+lola replay plan.json --output receipt.json --vault-passphrase "$LOLA_VAULT_PASSPHRASE"
+```
+
+## Reading the receipt
+
+```json
+{
+  "plan_id": "7f3a2e1c-9b4d-4e8a-9c1f-2d3e4f5a6b7c",
+  "description": "Read an ERC20 token's total supply...",
+  "dry_run": false,
+  "steps": [
+    { "id": "read_supply", "type": "call_contract", "output": "21000000000000000000000000" },
+    { "id": "check_supply", "type": "assert", "output": true },
+    { "id": "send_native", "type": "send_transaction", "tx_hash": "0x...", "output": { "Hash": "0x...", "Status": "pending" } },
+    { "id": "wait_a_moment", "type": "wait", "output": "waited 2s" }
+  ],
+  "success": true,
+  "started_at": "2026-06-25T14:00:00Z",
+  "finished_at": "2026-06-25T14:00:05Z"
+}
+```
+
+This receipt is also stored in the registry under `plan_id` — look it up
+later with `lola registry show <tx_hash>` for any transaction it produced.

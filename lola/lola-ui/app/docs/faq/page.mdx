@@ -1,0 +1,94 @@
+# FAQ
+
+## General
+
+**Is LOLA OS free?**
+Yes, fully — Apache 2.0, free forever, no paid tier. The only thing
+offered outside this codebase is optional enterprise support.
+
+**Does LOLA OS run on a hosted server?**
+No. `lola-core` runs entirely on your machine. The only "service" at all
+is the optional WebSocket HITL channel, and that's bound to
+`127.0.0.1` — it never leaves your computer either.
+
+**Which chains are supported?**
+Any EVM-compatible chain (Ethereum, Polygon, and anything else reachable
+via a standard JSON-RPC endpoint) and Solana, through `lola-core`'s
+`ChainAdapter` interface. Adding a new chain means implementing that
+interface — see `lola-core/internal/chain/adapter.go`.
+
+## Budget
+
+**What happens when I hit my budget limit?**
+Depends on the configured `action`: `pause` (default) blocks all further
+writes until you restart or resume; `notify` logs a critical warning but
+lets the operation through; `deny` rejects just that one operation
+without tripping the breaker for subsequent smaller ones. See the
+[Security Guide](/docs/security#budget-circuit-breaker).
+
+**Is the budget per-call or per-session?**
+Per-session — meaning per `lola-core` process lifetime. Restarting
+`lola-core` resets spend tracking to zero. There's no persistent
+cross-session budget in this version.
+
+**Does the budget check estimated cost or actual cost?**
+Both: `CheckWrite` is called with an *estimated* gas/USD cost before a
+transaction is built, and `Record` commits the *actual* cost afterward.
+This means an operation can be blocked before it's attempted, and the
+running total stays accurate even if the actual cost differs slightly
+from the estimate.
+
+## Replay
+
+**What's the difference between `lola replay` and `multi_operation`/`multiOperation`?**
+`lola replay` reads a JSON file, records the *entire run* as a single
+auditable unit in the registry, and supports variable interpolation
+between steps. The SDKs' `multi_operation` helpers are lighter-weight —
+useful when your agent is constructing a batch dynamically in code
+rather than from a static file, but they don't get their own registry
+entry as a unit (each individual operation is still recorded normally).
+
+**Can I test a replay plan without spending real gas?**
+Yes — `lola replay plan.json --dry-run` simulates every step without
+broadcasting anything. Combine with `--fork-url` pointed at a local
+Anvil/Hardhat fork to test against real contract state with zero risk.
+
+**What happens if a step fails partway through?**
+Execution stops immediately. The receipt records every step up to and
+including the failure, with the failing step's error message — later
+steps are never attempted. See [`lola replay`](/docs/operational/replay).
+
+## Idempotency
+
+**What does `idempotency_key` actually prevent?**
+Duplicate broadcasts. If your agent retries a tool call after a timeout
+(common with LLM-based agents that don't reliably track whether a
+previous call actually succeeded), passing the same `idempotency_key`
+returns the *cached result* from the first call instead of sending a
+second transaction.
+
+**How long does an idempotency key stay valid?**
+24 hours, fixed in this version. After that, the same key will trigger a
+fresh operation.
+
+**Do I have to provide an idempotency key?**
+No — it's optional on every write operation. Omit it (or pass an empty
+string) and every call executes normally, with no deduplication.
+
+## Registry
+
+**Where is the registry stored?**
+`~/.lola/lola.db` by default (a SQLite file), configurable via
+`registry.db_path` or `LOLA_DB_PATH`. See
+[Configuration Reference](/docs/configuration#registry).
+
+**Does clearing the registry affect my vault or config?**
+No — `lola registry clear` only truncates the registry's own tables
+(transactions, nonces, execution plans, idempotency cache, metrics
+counters). Your vault and `config.yaml` are untouched.
+
+**Why does the nonce manager need the registry at all?**
+So a crash or restart doesn't cause nonce reuse. The nonce manager
+persists its last-issued nonce per (chain, address) to SQLite on every
+allocation, and reconciles against the chain's own pending-nonce value if
+they ever drift.

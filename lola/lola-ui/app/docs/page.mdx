@@ -1,0 +1,48 @@
+# LOLA OS Documentation
+
+LOLA OS is the bridge between AI agents and blockchains. Add one decorator
+to a function, and it can read balances, call contracts, sign and
+broadcast transactions, read oracle prices, and call any REST API —
+through a local engine that runs entirely on your own machine.
+
+## The five-minute promise
+
+```bash
+pip install -e lola-sdks/python
+```
+
+```python
+from lola_os import lola_tool, get_balance
+
+@lola_tool
+def check_balance(address: str) -> dict:
+    return get_balance("ethereum", address)
+```
+
+That's it. No API keys, no hosted backend, no billing. `lola-core` (a
+single Go binary) handles the chain connection, signing, and safety
+checks; the SDK just talks to it.
+
+## What's in these docs
+
+- **[Getting Started](/docs/getting-started)** — install, run `lola doctor`, make your first call.
+- **[Configuration Reference](/docs/configuration)** — every config.yaml key and environment variable.
+- **[Security Guide](/docs/security)** — the vault, HITL approval, and the budget circuit breaker.
+- **Operational tooling** — dedicated pages for [`lola replay`](/docs/operational/replay), [`lola doctor`](/docs/operational/doctor), [`lola registry`](/docs/operational/registry), and [`lola metrics`](/docs/operational/metrics).
+- **Examples** — [Python in 5 minutes](/docs/examples/python-5min), a [replay plan walkthrough](/docs/examples/replay-plan), and integrations with [CrewAI](/docs/examples/crewai), [LangChain](/docs/examples/langchain), and a [custom trading bot](/docs/examples/custom-bot).
+- **[API Reference](/docs/api-reference)** — every function, across all three SDKs.
+- **[FAQ](/docs/faq)** — budget, replay, idempotency, and registry questions answered.
+
+## Why LOLA OS exists
+
+Most blockchain SDKs ask you to trust a hosted API, manage keys in
+environment variables, and hope nothing goes over budget. LOLA OS
+inverts that: your keys never leave your machine (they live in an
+AES-256-GCM-encrypted vault), every write operation can require your
+explicit approval, and a circuit breaker pauses spending automatically if
+a session's gas or USD cost crosses a limit you set. It's infrastructure
+that works quietly in the background — not a platform you have to trust.
+
+LOLA OS is fully open source under Apache 2.0. There is no paid tier, no
+hosted API, and no license key, now or planned. The only thing offered
+outside this codebase is optional enterprise support.

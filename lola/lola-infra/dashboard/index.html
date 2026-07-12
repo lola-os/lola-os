@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LOLA OS — HITL Dashboard Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* Grayscale only, per branding.md — this is a demo of the data feed,
+     not a production UI, but it still follows the brand. */
+  :root {
+    --gray-50: #fafafa; --gray-100: #f5f5f5; --gray-200: #e5e5e5;
+    --gray-400: #a3a3a3; --gray-600: #525252; --gray-800: #262626;
+    --gray-900: #171717; --gray-950: #0a0a0a;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Inter", system-ui, sans-serif;
+    background: var(--gray-950);
+    color: var(--gray-100);
+  }
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--gray-800);
+  }
+  header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; }
+  header p { margin: 0.25rem 0 0; color: var(--gray-400); font-size: 0.875rem; }
+  #status { display: inline-block; margin-top: 0.5rem; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid var(--gray-600); }
+  main { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .request {
+    border: 1px solid var(--gray-800);
+    background: var(--gray-900);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .request dl { display: grid; grid-template-columns: 120px 1fr; gap: 0.4rem 1rem; margin: 0.75rem 0; font-size: 0.875rem; }
+  .request dt { color: var(--gray-400); }
+  .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  button {
+    font-family: inherit;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--gray-600);
+    background: var(--gray-800);
+    color: var(--gray-100);
+    cursor: pointer;
+  }
+  button.approve { background: var(--gray-100); color: var(--gray-950); border-color: var(--gray-100); }
+  button:hover { opacity: 0.85; }
+  .empty { color: var(--gray-600); font-size: 0.875rem; text-align: center; padding: 3rem 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>LOLA OS — HITL Dashboard Demo</h1>
+    <p>Listening for approval requests over the local WebSocket channel.</p>
+    <span id="status">connecting…</span>
+  </header>
+  <main id="requests">
+    <div class="empty">No pending approval requests.</div>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const container = document.getElementById("requests");
+    const pending = new Map();
+
+    function render() {
+      container.innerHTML = "";
+      if (pending.size === 0) {
+        container.innerHTML = '<div class="empty">No pending approval requests.</div>';
+        return;
+      }
+      for (const [id, req] of pending) {
+        const el = document.createElement("div");
+        el.className = "request";
+        el.innerHTML = `
+          <strong>${req.Description || "Write operation"}</strong>
+          <dl>
+            <dt>Chain</dt><dd>${req.Chain || "-"}</dd>
+            <dt>Method</dt><dd>${req.Method || "-"}</dd>
+            <dt>Contract</dt><dd>${req.Contract || "-"}</dd>
+            <dt>From</dt><dd>${req.From || "-"}</dd>
+            <dt>To</dt><dd>${req.To || "-"}</dd>
+            <dt>Value</dt><dd>${req.ValueHuman || "-"}</dd>
+          </dl>
+          <div class="actions">
+            <button class="approve" data-id="${id}" data-decision="approve">Approve</button>
+            <button data-id="${id}" data-decision="deny">Deny</button>
+            <button data-id="${id}" data-decision="skip">Skip</button>
+          </div>
+        `;
+        container.appendChild(el);
+      }
+    }
+
+    container.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-id]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-id");
+      const decision = btn.getAttribute("data-decision");
+      socket.send(JSON.stringify({ type: "approval_response", id, decision }));
+      pending.delete(id);
+      render();
+    });
+
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${proto}//${location.host}/ws`);
+
+    socket.onopen = () => {
+      statusEl.textContent = "connected";
+    };
+    socket.onclose = () => {
+      statusEl.textContent = "disconnected";
+    };
+    socket.onerror = () => {
+      statusEl.textContent = "error";
+    };
+    socket.onmessage = (event) => {
+      let msg;
+      try {
+        msg = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (msg.type === "approval_request") {
+        pending.set(msg.id, msg.request || {});
+        render();
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+# `lola metrics`
+
+Operational counters for monitoring and observability — request totals,
+transaction outcomes, and anything else `lola-core` tracks as a named
+counter.
+
+```bash
+lola metrics                    # JSON (default)
+lola metrics --format prometheus
+```
+
+## JSON output
+
+```json
+{
+  "transactions": {
+    "confirmed": 41,
+    "failed": 2,
+    "pending": 1,
+    "total": 44
+  },
+  "counters": {
+    "requests_total": 318,
+    "rate_limit_hits": 3
+  }
+}
+```
+
+## Prometheus output
+
+```
+# HELP lola_transactions_total Total transactions recorded by status
+# TYPE lola_transactions_total counter
+lola_transactions_total{status="confirmed"} 41
+lola_transactions_total{status="failed"} 2
+lola_transactions_total{status="pending"} 1
+# HELP lola_counter Generic named counters tracked by lola-core
+# TYPE lola_counter counter
+lola_counter{name="requests_total"} 318
+lola_counter{name="rate_limit_hits"} 3
+```
+
+Point a Prometheus scrape config at this output by running it on a
+schedule and writing to a file `node_exporter`'s textfile collector
+reads, or wrap it in a tiny HTTP handler in your own deployment — `lola
+metrics` itself is a point-in-time CLI snapshot, not a long-running
+metrics server.
+
+## What's tracked today
+
+- Transaction outcome counts (confirmed / failed / pending), derived from
+  the [registry](/docs/operational/registry).
+- Generic named counters, incremented by `lola-core` internals (request
+  totals, rate-limit hits). The set of counters will grow as `lola-core`
+  matures — `lola metrics` will surface whatever exists without code
+  changes on your end, since it just reads the `metrics_counters` table.
+
+For real-time spend tracking specifically (gas/USD against your budget),
+see `budget_status` in the [Security Guide](/docs/security#budget-circuit-breaker) —
+that's a live RPC call rather than a CLI snapshot, since budget state
+needs to be checked *before* an operation proceeds.

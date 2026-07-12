@@ -1,0 +1,18 @@
+# Mounted to ~/.lola/config.yaml inside the lola-core container by
+# docker-compose.yml. Enables the WebSocket HITL channel so the optional
+# dashboard demo (see docker-compose.yml's `dashboard` service) has
+# something to connect to. Everything else uses lola-core's built-in
+# defaults — see lola-core/config.example.yaml for the full key
+# reference.
+
+mode: read_only
+
+hitl:
+  enabled: true
+  timeout_seconds: 120
+  websocket_enabled: true
+  websocket_addr: 127.0.0.1:8765
+
+logging:
+  level: info
+  format: json

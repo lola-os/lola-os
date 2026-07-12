@@ -1,0 +1,87 @@
+# CrewAI Integration
+
+`@lola_tool`-decorated functions are plain Python callables with a few
+introspectable attributes (`__lola_name__`, `__lola_description__`,
+`__lola_signature__`) — exactly the shape CrewAI's `@tool` decorator
+expects, so the two compose directly.
+
+```python
+from crewai import Agent, Task, Crew
+from crewai.tools import tool
+from lola_os import lola_tool, get_balance, call_contract, get_price_from_oracle
+
+
+@tool("Check ETH balance")
+@lola_tool
+def check_balance(address: str) -> str:
+    """Returns the native ETH balance for an Ethereum address."""
+    balance = get_balance("ethereum", address)
+    human = int(balance["raw_value"]) / 10 ** balance["decimals"]
+    return f"{human} {balance['symbol']}"
+
+
+@tool("Get ETH/USD price")
+@lola_tool
+def eth_price() -> str:
+    """Returns the current ETH/USD price from Chainlink."""
+    result = get_price_from_oracle("ethereum", "ETH/USD")
+    return f"${result['price']:.2f}"
+
+
+@tool("Check token total supply")
+@lola_tool
+def token_supply(contract_address: str) -> str:
+    """Returns a token's total supply by calling totalSupply() on its contract."""
+    supply = call_contract("ethereum", contract_address, "totalSupply")
+    return str(supply)
+
+
+portfolio_agent = Agent(
+    role="Portfolio Analyst",
+    goal="Report on wallet balances and current market prices",
+    backstory="A careful on-chain analyst who never guesses at numbers.",
+    tools=[check_balance, eth_price, token_supply],
+)
+
+report_task = Task(
+    description="Check the balance of 0xYourAddress and report the current ETH/USD price.",
+    agent=portfolio_agent,
+    expected_output="A short report with the wallet's ETH balance and its USD value.",
+)
+
+crew = Crew(agents=[portfolio_agent], tasks=[report_task])
+result = crew.kickoff()
+print(result)
+```
+
+## Why the decorator order matters
+
+`@tool` (CrewAI's) sits on the *outside*, `@lola_tool` on the *inside*:
+
+```python
+@tool("Check ETH balance")   # CrewAI registers this as an agent tool
+@lola_tool                    # LOLA OS ensures the engine is running first
+def check_balance(address: str) -> str:
+    ...
+```
+
+`@lola_tool` runs first when the function is called (it's the inner
+wrapper), guaranteeing the `lola-core` client is started before CrewAI's
+tool-calling machinery invokes your function body.
+
+## Write operations need care in agent contexts
+
+If a CrewAI tool calls `execute_contract` or `send_transaction`, that
+operation still goes through LOLA OS's normal safety checks — ABI
+validation, budget limits, and (unless disabled) a human-in-the-loop
+approval prompt. In an autonomous crew, you probably want either:
+
+- A tight [budget](/docs/security#budget-circuit-breaker) so a
+  misbehaving agent can't overspend even if it calls a write tool
+  repeatedly, or
+- HITL left enabled, so a human reviews every write before it broadcasts
+  — slower, but the right default for anything touching real funds.
+
+See the [custom trading bot example](/docs/examples/custom-bot) for a
+pattern that handles approval programmatically instead of via the
+console prompt.

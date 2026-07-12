@@ -1,0 +1,125 @@
+# Security Guide
+
+LOLA OS is designed so that you never have to trust a remote server with
+your keys, and so that an AI agent never has unlimited, unsupervised
+spending power. Three mechanisms work together: the **vault**,
+**human-in-the-loop approval**, and the **budget circuit breaker**.
+
+## The vault
+
+Private keys are encrypted at rest with AES-256-GCM. The encryption key
+is derived from your passphrase using scrypt (cost parameters configurable,
+see [Configuration Reference](/docs/configuration#vault)) — the same kind
+of key-derivation function used by hardware wallets and password managers,
+chosen specifically because it's expensive to brute-force.
+
+- Keys are **never** written to disk, logs, or stdout in plaintext.
+- The only place a plaintext key exists is in memory, for the duration of
+  a single signing operation.
+- The vault file is portable — copy it anywhere; without the passphrase
+  it's unreadable.
+
+```bash
+lola vault init               # create a new vault
+lola vault add deployer        # store a key under the name "deployer"
+lola vault list                 # see stored key NAMES (never values)
+lola vault remove deployer      # delete a key
+```
+
+`lola doctor --vault-passphrase "..."` verifies the vault decrypts
+cleanly without exposing any of its contents.
+
+## Human-in-the-loop (HITL) approval
+
+By default, every write operation (a transaction, a contract execution,
+a token transfer) pauses and asks you to approve, deny, or skip it —
+right in your terminal, with a clear summary of what's about to happen.
+
+```
+──────────────────────────────────────────────────────
+⚠️  APPROVAL REQUIRED
+──────────────────────────────────────────────────────
+  Chain:     ethereum
+  Method:    transfer
+  Contract:  0xTokenAddress
+  From:      0xYourAddress
+  To:        0xRecipient
+──────────────────────────────────────────────────────
+  [a]pprove / [d]eny / [s]kip:
+```
+
+If you're building your own approval UI instead of using the terminal,
+enable the WebSocket channel:
+
+```yaml
+hitl:
+  websocket_enabled: true
+  websocket_addr: 127.0.0.1:8765
+```
+
+This server **only** binds to a loopback address — it refuses to start on
+anything else, since the protocol has no authentication by design. It's
+meant for a UI running on the same machine as `lola-core`, not a remote
+service.
+
+You can disable HITL entirely (`hitl.enabled: false`) for fully automated
+pipelines — but then the budget circuit breaker is your only remaining
+safety net, so set it deliberately.
+
+## Budget circuit breaker
+
+Every session (one `lola-core` process lifetime) tracks gas spent and
+USD-equivalent cost against limits you set. When a limit is hit, the
+breaker's configured `action` determines what happens:
+
+- **`pause`** (default) — all further write operations are blocked until
+  you restart `lola-core` or explicitly resume.
+- **`notify`** — the operation proceeds, but a `CRITICAL` log is emitted.
+  Use this if you want visibility without interruption.
+- **`deny`** — only the offending operation is rejected; the breaker
+  isn't tripped, so smaller subsequent writes can still go through.
+
+```yaml
+budget:
+  max_gas_spend_per_session: 0.1   # ETH
+  max_usd_spend_per_session: 10.0
+  max_requests_per_minute: 30
+  action: pause
+```
+
+Check current spend at any time:
+
+```python
+from lola_os import LolaCore
+client = LolaCore()
+print(client.call("budget_status"))
+# {'gas_spent': 0.0234, 'usd_spent': 4.50, 'requests_this_minute': 12, 'paused': False, 'paused_reason': ''}
+```
+
+## Hardware wallets
+
+This build doesn't bundle a Ledger/Trezor driver — `lola doctor` reports
+this honestly rather than faking detection. Vault-based keys are the
+supported signing method today; hardware wallet support is a documented
+extension point in `lola-core`'s `chain.ChainAdapter` interface.
+
+## Pre-flight ABI validation
+
+Before any contract call is simulated or broadcast, LOLA OS checks that
+the method name exists in the ABI and that argument types match what the
+ABI declares. This catches a common AI-agent failure mode — a
+hallucinated method name, or a string passed where a number was
+expected — *before* it costs gas or produces a confusing on-chain revert.
+
+```
+ABIMismatchError: ABI mismatch for method "trasnfer": method not found
+in ABI; available methods: transfer, balanceOf, approve, totalSupply
+```
+
+## Putting it together
+
+A reasonable production posture: vault-based signing, HITL enabled for
+anything above a small threshold, and a conservative budget — `pause` so
+a misbehaving agent can't keep spending after a mistake, with `notify`
+reserved for low-stakes test environments where you'd rather watch than
+block.

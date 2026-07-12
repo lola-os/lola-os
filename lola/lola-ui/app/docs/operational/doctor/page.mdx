@@ -1,0 +1,54 @@
+# `lola doctor`
+
+A comprehensive environment health check. Run it after install, after
+changing `config.yaml`, or any time something feels wrong — it's
+designed to tell you exactly what's broken and how to fix it, not just
+that something is.
+
+```bash
+lola doctor
+lola doctor --vault-passphrase "your-passphrase"   # also verifies vault decryption
+```
+
+## What it checks
+
+| Check | What it verifies | Typical fix |
+|---|---|---|
+| `config.yaml` syntax | The file parses as valid YAML | Fix the syntax error, or delete the file to use defaults |
+| RPC: `<chain>` | Each configured chain responds to a basic call (latest block/slot) | Check the RPC URL, or set `LOLA_RPC_URL_<CHAIN>` |
+| Oracle configuration | Chainlink feed addresses are well-formed | Fix the address in `oracle.chainlink_feeds` |
+| Vault integrity | The vault decrypts cleanly (only if `--vault-passphrase` is given) | Double-check the passphrase; restore from backup if corrupted |
+| Registry (SQLite) | The local database is reachable and writable | Check file permissions on `registry.db_path` |
+| Hardware wallet | Reports honestly that no driver is bundled in this build | Use vault-based keys instead |
+
+## Example output
+
+```
+🩺  LOLA OS Doctor
+Checking your environment...
+
+  ✅  config.yaml syntax              /home/you/.lola/config.yaml
+  ✅  RPC: ethereum                    latest block/slot: 21384021
+  ❌  RPC: sepolia                     dialing https://rpc.sepolia.org: context deadline exceeded
+      → fix: Check that https://rpc.sepolia.org is reachable and correct in config.yaml or via LOLA_RPC_URL_SEPOLIA
+  ✅  Oracle configuration             1 feed(s) configured
+  ✅  Vault integrity                  3 entries, decrypts cleanly
+  ✅  Registry (SQLite)                /home/you/.lola/lola.db (12 recent tx)
+  ✅  Hardware wallet                  no hardware wallet driver bundled in this build; use vault-based keys
+
+❌ 6/7 checks passed — see fixes above.
+```
+
+`lola doctor` exits non-zero if any check fails, so it's safe to use as a
+pre-flight gate in CI or a startup script.
+
+## When to run it
+
+- Right after installing, before your first call (see
+  [Getting Started](/docs/getting-started)).
+- After editing `config.yaml` or rotating an RPC provider.
+- Before running [`lola replay`](/docs/operational/replay) against a new
+  chain or fork URL.
+- As a first troubleshooting step any time an SDK call fails with an
+  `RPCConnectionError` — `lola doctor` will usually pinpoint exactly which
+  chain is unreachable and why.

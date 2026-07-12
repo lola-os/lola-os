@@ -1,0 +1,103 @@
+# Custom Trading Bot with HITL
+
+A bot that watches a price feed and proposes (but never auto-executes) a
+swap when a threshold is crossed — using LOLA OS's WebSocket
+human-in-the-loop channel to build a custom approval UI instead of the
+console prompt.
+
+## Why not just disable HITL?
+
+You could (`hitl.enabled: false`), but for anything that moves real
+funds, keeping a human in the loop — just not necessarily *typing into a
+terminal* — is the safer default. The WebSocket channel exists exactly
+for this: build whatever approval experience fits your bot (a desktop
+notification, a Slack message with buttons, a mobile push), while LOLA OS
+still blocks the trade until someone responds.
+
+## 1. Enable the WebSocket channel
+
+```yaml
+# ~/.lola/config.yaml
+hitl:
+  enabled: true
+  websocket_enabled: true
+  websocket_addr: 127.0.0.1:8765
+  timeout_seconds: 300   # give a human five minutes to respond
+```
+
+## 2. The bot logic
+
+```python
+import time
+from lola_os import lola_tool, get_price_from_oracle, swap_tokens, BudgetExceededError
+
+THRESHOLD_USD = 4000.0
+ROUTER = "0xRouterContractAddress"
+ROUTER_ABI = '[...]'  # your router's swapExactTokensForTokens ABI
+
+
+@lola_tool
+def check_and_propose_swap() -> dict:
+    """Checks ETH/USD; if it crosses THRESHOLD_USD, proposes a swap.
+    The actual broadcast blocks on human approval via the WebSocket
+    channel started in a separate process (see step 3)."""
+    price = get_price_from_oracle("ethereum", "ETH/USD")
+    if price["price"] < THRESHOLD_USD:
+        return {"action": "none", "price": price["price"]}
+
+    try:
+        receipt = swap_tokens(
+            chain="ethereum",
+            from_address="0xYourAddress",
+            router_contract=ROUTER,
+            method="swapExactTokensForTokens",
+            args=[ /* amountIn, amountOutMin, path, to, deadline */ ],
+            abi=ROUTER_ABI,
+            idempotency_key=f"swap-{int(time.time() // 300)}",  # collapse retries within a 5-minute window
+        )
+        return {"action": "swapped", "receipt": receipt}
+    except BudgetExceededError as e:
+        return {"action": "blocked", "reason": str(e)}
+
+
+if __name__ == "__main__":
+    while True:
+        result = check_and_propose_swap()
+        print(result)
+        time.sleep(60)
+```
+
+## 3. A minimal custom approval listener
+
+This runs as a separate process (or thread) and decides how to surface
+approval requests — here, just printing them with a clearer format than
+the default console prompt, but you'd swap this for a real notification
+integration:
+
+```python
+from lola_os import listen_to_websocket
+
+def handle_approval(request: dict) -> str:
+    print(f"\n🔔 Approval needed: swap on {request.get('chain')}")
+    print(f"   Contract: {request.get('contract')}")
+    print(f"   Method:   {request.get('method')}")
+    answer = input("   Approve this swap? [y/n]: ").strip().lower()
+    return "approve" if answer == "y" else "deny"
+
+listen_to_websocket(handle_approval, addr="127.0.0.1:8765")
+```
+
+## Why the idempotency key matters here
+
+The bot loop runs every 60 seconds, but the idempotency key collapses
+into 5-minute windows (`int(time.time() // 300)`). If the bot crashes and
+restarts mid-window, or the same price check fires twice due to a retry,
+it won't propose (and risk getting approved for) the same swap twice —
+the second call simply returns the first call's cached receipt.
+
+## Budget as a backstop, not the primary control
+
+Even with HITL active, set a [budget](/docs/security#budget-circuit-breaker)
+tight enough that a bug causing rapid-fire approval requests can't drain
+funds before a human notices — HITL handles *intent*, budget handles
+*blast radius*.

@@ -1,0 +1,69 @@
+# `lola registry`
+
+Every transaction LOLA OS broadcasts, and every [`lola replay`](/docs/operational/replay)
+run, is recorded in a local SQLite database (`~/.lola/lola.db` by
+default). `lola registry` is how you inspect or reset that history.
+
+## `lola registry list`
+
+Shows recent operations, newest first.
+
+```bash
+lola registry list
+lola registry list --limit 100
+```
+
+```
+CHAIN        STATUS     METHOD               GAS        TIMESTAMP
+────────────────────────────────────────────────────────────────────────
+ethereum     pending    transfer             0          2026-06-25 14:02:11
+  0x8f2a91e3c7d4b1a09e5f6c8d2b3a4e5f6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f
+sepolia      confirmed                       21000      2026-06-25 13:58:44
+  0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+```
+
+## `lola registry show <tx_hash>`
+
+Full detail for a single transaction, including any error message if it
+failed.
+
+```bash
+lola registry show 0x8f2a91e3c7d4b1a09e5f6c8d2b3a4e5f6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f
+```
+
+```
+Hash:       0x8f2a...
+Chain:      ethereum
+From:       0xYourAddress
+To:         0xRecipient
+Value:      1000000000000000
+Gas:        21000
+Status:     pending
+Method:
+Plan ID:
+Timestamp:  2026-06-25 14:02:11
+```
+
+## `lola registry clear`
+
+Truncates every table — transactions, nonces, execution plans, the
+idempotency cache, and metrics counters. There's no undo; this is meant
+for resetting a dev environment, not pruning production history.
+
+```bash
+lola registry clear
+```
+
+## What's actually stored
+
+| Table | Purpose |
+|---|---|
+| `transactions` | Hash, chain, from/to, value, gas, status, timestamp, and (if applicable) which replay plan produced it |
+| `nonces` | The nonce manager's persisted state per (chain, address) — see the [Security Guide](/docs/security) |
+| `execution_plans` | Every `lola replay` run: its description, status, and full JSON receipt |
+| `idempotency_keys` | Cached results for write operations called with an `idempotency_key`, with a 24-hour TTL |
+| `metrics_counters` | Named counters consumed by [`lola metrics`](/docs/operational/metrics) |
+
+This is also why crash recovery works the way it does: if `lola-core`
+restarts mid-session, the nonce manager reads its last-known nonce from
+this same database rather than starting from zero.

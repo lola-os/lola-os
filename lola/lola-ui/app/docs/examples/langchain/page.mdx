@@ -1,0 +1,107 @@
+# LangChain Integration
+
+LangChain's `StructuredTool` wraps any callable with a Pydantic schema.
+`@lola_tool` functions work directly — LOLA OS doesn't require its own
+tool base class.
+
+```python
+from langchain.tools import StructuredTool
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from pydantic import BaseModel, Field
+
+from lola_os import lola_tool, get_balance, call_contract, fetch_external_api
+
+
+@lola_tool
+def check_balance(chain: str, address: str) -> dict:
+    """Returns the native asset balance for an address on the given chain."""
+    return get_balance(chain, address)
+
+
+class CheckBalanceArgs(BaseModel):
+    chain: str = Field(description="Chain name, e.g. 'ethereum' or 'polygon'")
+    address: str = Field(description="The wallet address to check")
+
+
+balance_tool = StructuredTool.from_function(
+    func=check_balance,
+    name="check_balance",
+    description="Get the native balance of a wallet on a given chain.",
+    args_schema=CheckBalanceArgs,
+)
+
+
+@lola_tool
+def token_total_supply(chain: str, contract_address: str) -> str:
+    """Returns a token's total supply."""
+    return str(call_contract(chain, contract_address, "totalSupply"))
+
+
+supply_tool = StructuredTool.from_function(
+    func=token_total_supply,
+    name="token_total_supply",
+    description="Get a token contract's total supply.",
+)
+
+
+@lola_tool
+def fetch_gas_tracker() -> dict:
+    """Fetches current gas prices from a public gas tracker API."""
+    return fetch_external_api("https://api.etherscan.io/api?module=gastracker&action=gasoracle")
+
+
+gas_tool = StructuredTool.from_function(
+    func=fetch_gas_tracker,
+    name="fetch_gas_tracker",
+    description="Get current Ethereum gas prices.",
+)
+
+
+llm = ChatOpenAI(model="gpt-4o")
+agent = create_react_agent(llm, tools=[balance_tool, supply_tool, gas_tool])
+
+result = agent.invoke({
+    "messages": [("user", "What's the ETH balance of 0xYourAddress, and what's gas like right now?")]
+})
+print(result["messages"][-1].content)
+```
+
+## Async agents
+
+LangGraph and most modern LangChain agent loops run async. Use the
+`_async` function variants so the event loop never blocks on an IPC
+round-trip to `lola-core`:
+
+```python
+from lola_os import lola_tool, get_balance_async
+
+@lola_tool
+async def check_balance_async(chain: str, address: str) -> dict:
+    return await get_balance_async(chain, address)
+```
+
+`@lola_tool` detects `async def` automatically and wraps it correctly —
+no separate decorator needed.
+
+## Handling errors as tool output, not exceptions
+
+LangChain agents generally handle a tool *returning* an error message
+better than a tool *raising* one (which can derail the agent's reasoning
+trace). Catch LOLA's typed exceptions inside the tool function:
+
+```python
+from lola_os import lola_tool, execute_contract, BudgetExceededError, ABIMismatchError
+
+@lola_tool
+def safe_execute(chain: str, contract: str, method: str, args: list) -> str:
+    """Executes a contract method, returning an error string on failure
+    instead of raising — keeps the agent's reasoning loop intact."""
+    try:
+        receipt = execute_contract(chain, "0xYourAddress", contract, method, args)
+        return f"Success: {receipt['tx_hash']}"
+    except BudgetExceededError as e:
+        return f"Could not execute: budget exceeded ({e})"
+    except ABIMismatchError as e:
+        return f"Could not execute: {e}"
+```

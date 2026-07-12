@@ -1,0 +1,145 @@
+# `lola replay`
+
+`lola replay` executes a structured JSON plan: a sequence of operations,
+run in order, with variable interpolation so later steps can use earlier
+steps' outputs. Every run is recorded in the local SQLite registry for a
+full audit trail.
+
+```bash
+lola replay plan.json --dry-run
+lola replay plan.json --output receipt.json
+lola replay plan.json --fork-url http://127.0.0.1:8545
+```
+
+## Flags
+
+| Flag | Description |
+|---|---|
+| `--dry-run` | Simulate every step; never broadcast a transaction. |
+| `--fork-url <RPC>` | Execute against this RPC instead of the configured one — point at a local Anvil/Hardhat fork to test against real contract state safely. |
+| `--output <file>` | Write the full execution receipt as JSON to this path. |
+| `--key-name <name>` | Vault entry to sign with for every `from` address in the plan (default: `default`). |
+| `--vault-passphrase <pass>` | Vault passphrase (falls back to `LOLA_VAULT_PASSPHRASE`). |
+
+## The plan.json schema
+
+```json
+{
+  "description": "string — shown in the receipt and registry",
+  "operations": [
+    {
+      "id": "string — unique within the plan, used for variable references",
+      "type": "call_contract | send_transaction | transfer_token | execute_contract | swap_tokens | assert | wait",
+      "chain": "string — must match a configured chain name"
+    }
+  ]
+}
+```
+
+### Operation types
+
+<div className="overflow-x-auto">
+
+| Type | Required fields | Produces a transaction? |
+|---|---|---|
+| `call_contract` | `contract`, `method`, `args`, `abi` (optional) | No |
+| `send_transaction` | `from`, `to`, `amount` | Yes |
+| `transfer_token` | `from`, `to`, `token`, `amount` | Yes |
+| `execute_contract` | `from`, `contract`, `method`, `args`, `abi` (optional) | Yes |
+| `swap_tokens` | same as `execute_contract`, against a router contract | Yes |
+| `assert` | `expression`, `expected` (optional) | No |
+| `wait` | `seconds` | No |
+
+</div>
+
+### Variable interpolation
+
+Any string field can reference an earlier step's output with
+`${stepID}` or `${stepID.field}`:
+
+```json
+{
+  "id": "check_supply",
+  "type": "assert",
+  "expression": "${read_supply.output} > 0"
+}
+```
+
+`${stepID.tx_hash}` resolves to that step's transaction hash;
+`${stepID.output}` resolves to its full output (for `call_contract`
+steps, this is the decoded return value).
+
+### Assertions
+
+The `assert` operation supports a small comparison grammar:
+`==`, `!=`, `>`, `>=`, `<`, `<=`. If no operator is found, the expression
+is compared directly against the `expected` field. A failed assertion
+halts the plan immediately — later steps are not executed, and the
+receipt records exactly where execution stopped.
+
+## A complete example
+
+```json
+{
+  "description": "Read an ERC20 token's total supply, assert it's non-zero, then send a small native transfer.",
+  "operations": [
+    {
+      "id": "read_supply",
+      "type": "call_contract",
+      "chain": "sepolia",
+      "contract": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "method": "totalSupply",
+      "args": [],
+      "abi": "[{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"type\":\"function\"}]"
+    },
+    {
+      "id": "check_supply",
+      "type": "assert",
+      "expression": "${read_supply.output} > 0"
+    },
+    {
+      "id": "send_native",
+      "type": "send_transaction",
+      "chain": "sepolia",
+      "from": "0xYourSendingAddress",
+      "to": "0xYourRecipientAddress",
+      "amount": "1000000000000000",
+      "idempotency_key": "demo-plan-send-001"
+    },
+    {
+      "id": "wait_a_moment",
+      "type": "wait",
+      "seconds": 2
+    }
+  ]
+}
+```
+
+This exact file is included at `lola-infra/examples/plan.json`.
+
+```bash
+lola replay plan.json --dry-run
+```
+
+```
+Plan: Read an ERC20 token's total supply, assert it's non-zero, then send a small native transfer.
+Plan ID: 7f3a2e1c-...
+
+  ✅  read_supply   call_contract
+  ✅  check_supply   assert
+  ✅  send_native    send_transaction (dry-run — no transactions broadcast)
+  ✅  wait_a_moment  wait
+
+✅ Plan completed successfully.
+```
+
+## Inspecting past runs
+
+Every replay is recorded as an `execution_plans` row, and every
+transaction it produced is recorded in `transactions` with that plan's ID
+attached. See [`lola registry`](/docs/operational/registry) to query
+them, or look up the full receipt directly:
+
+```bash
+lola registry show <tx_hash>
+```
