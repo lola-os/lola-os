@@ -1,0 +1,33 @@
+{
+  "description": "Read an ERC20 token's total supply, assert it's non-zero, then send a small native transfer.",
+  "operations": [
+    {
+      "id": "read_supply",
+      "type": "call_contract",
+      "chain": "sepolia",
+      "contract": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "method": "totalSupply",
+      "args": [],
+      "abi": "[{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"type\":\"function\"}]"
+    },
+    {
+      "id": "check_supply",
+      "type": "assert",
+      "expression": "${read_supply.output} > 0"
+    },
+    {
+      "id": "send_native",
+      "type": "send_transaction",
+      "chain": "sepolia",
+      "from": "0xYourSendingAddress",
+      "to": "0xYourRecipientAddress",
+      "amount": "1000000000000000",
+      "idempotency_key": "demo-plan-send-001"
+    },
+    {
+      "id": "wait_a_moment",
+      "type": "wait",
+      "seconds": 2
+    }
+  ]
+}

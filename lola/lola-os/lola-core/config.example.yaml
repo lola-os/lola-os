@@ -1,0 +1,73 @@
+# Example ~/.lola/config.yaml — copy to that path and edit, or leave it
+# absent entirely to run on built-in defaults (see internal/config/config.go).
+#
+# Every value here can also be overridden by an environment variable;
+# see lola-ui/content/docs/configuration.mdx for the full reference.
+
+mode: read_only  # "read_only" or "live" — write operations are refused in read_only mode
+
+# Chains.
+#
+# LOLA OS ships with a built-in catalog of every major EVM chain (Ethereum,
+# Polygon, Arbitrum, Optimism, Base, BNB Chain, Avalanche, Linea, Scroll,
+# zkSync, Blast, Mantle, and more), the common testnets, and Solana. See
+# `internal/chain/catalog.go` for the full list.
+#
+# Because of the catalog, enabling a chain can be as short as a single line —
+# LOLA fills in the RPC URL, chain id, native symbol/decimals, and explorer
+# automatically. Anything you set here OVERRIDES the catalog default, so you
+# keep full control (point a chain at your own Alchemy/Infura/QuickNode/node
+# endpoint, change its symbol, etc.).
+#
+# Chains listed here are ADDED to the built-in default set (ethereum, polygon,
+# arbitrum, optimism, base, bnb, avalanche, sepolia, base-sepolia, solana,
+# solana-devnet). To run against a private/custom network, give it a chain_id
+# and rpc_url and it defaults to EVM.
+chains:
+  # Enable a catalog chain with nothing but its name:
+  arbitrum: {}
+  optimism: {}
+  # Override just the RPC for a chain (recommended for production throughput):
+  ethereum:
+    rpc_url: https://ethereum-rpc.publicnode.com   # or your Alchemy/Infura URL
+    explorer_api_key: ""                            # Etherscan key enables ABI auto-fetch
+  # Solana works the same way:
+  solana: {}
+  # A fully custom / private EVM network not in the catalog:
+  # myrollup:
+  #   kind: evm
+  #   rpc_url: http://localhost:8545
+  #   chain_id: 31337
+  #   native_symbol: ETH
+  #   native_decimals: 18
+
+vault:
+  path: ~/.lola/vault.enc
+  scrypt_n: 32768
+  scrypt_r: 8
+  scrypt_p: 1
+
+hitl:
+  enabled: true
+  timeout_seconds: 120
+  websocket_enabled: false
+  websocket_addr: 127.0.0.1:8765
+
+logging:
+  level: info       # debug | info | warn | error
+  format: rich       # rich | json
+
+registry:
+  db_path: ~/.lola/lola.db
+
+budget:
+  max_gas_spend_per_session: 0.5    # in native units, e.g. ETH
+  max_usd_spend_per_session: 50.0
+  max_requests_per_minute: 60
+  action: pause       # pause | notify | deny
+
+oracle:
+  chainlink_feeds:
+    ETH/USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+  rest_timeout_ms: 5000
+  rest_max_retries: 3
