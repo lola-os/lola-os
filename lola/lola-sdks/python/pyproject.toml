@@ -9,7 +9,8 @@ description = "LOLA OS Python SDK — add @lola_tool to any function and it can 
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
-authors = [{ name = "LOLA OS contributors" }]
+authors = [{ name = "0xSemantic" }]
+maintainers = [{ name = "0xSemantic" }]
 keywords = ["blockchain", "ai-agents", "web3", "ethereum", "solana", "langchain", "crewai"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

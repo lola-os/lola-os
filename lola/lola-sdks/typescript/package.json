@@ -2,6 +2,7 @@
   "name": "lola-os",
   "version": "1.0.0-test.0",
   "description": "LOLA OS TypeScript/JavaScript SDK — add @lolaTool to any function and it can talk to blockchains, oracles, and APIs.",
+  "author": "0xSemantic (https://github.com/0xSemantic)",
   "license": "Apache-2.0",
   "homepage": "https://lola-os.dev",
   "repository": {

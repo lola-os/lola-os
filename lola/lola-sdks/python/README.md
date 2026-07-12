@@ -1,5 +1,10 @@
 # lola-os (Python SDK)
 
+![PyPI](https://img.shields.io/pypi/v/lola-os?labelColor=252525&color=555555&style=flat-square)
+![Downloads](https://img.shields.io/pypi/dm/lola-os?labelColor=252525&color=555555&style=flat-square)
+![Python versions](https://img.shields.io/pypi/pyversions/lola-os?labelColor=252525&color=555555&style=flat-square)
+![License](https://img.shields.io/pypi/l/lola-os?labelColor=252525&color=555555&style=flat-square)
+
 Add `@lola_tool` to any function and it can talk to blockchains, oracles,
 and APIs through the local `lola-core` engine — no hosted backend, no API
 keys, no billing.
@@ -155,3 +160,8 @@ are written in standard `pytest` style and will run normally with
 | `stream_logs()` | Generator of structured log entries |
 
 Every function above has an `_async` counterpart with the same signature.
+
+---
+
+Built and maintained by **[0xSemantic](https://github.com/0xSemantic)** —
+developer and visionary behind LOLA OS. Licensed under Apache-2.0.

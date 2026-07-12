@@ -1,5 +1,10 @@
 # lola-os (TypeScript/JavaScript SDK)
 
+![npm](https://img.shields.io/npm/v/lola-os?labelColor=252525&color=555555&style=flat-square)
+![downloads](https://img.shields.io/npm/dm/lola-os?labelColor=252525&color=555555&style=flat-square)
+![types](https://img.shields.io/npm/types/lola-os?labelColor=252525&color=555555&style=flat-square)
+![License](https://img.shields.io/npm/l/lola-os?labelColor=252525&color=555555&style=flat-square)
+
 Add `lolaTool` to any function and it can talk to blockchains, oracles,
 and APIs through the local `lola-core` engine.
 
@@ -175,3 +180,8 @@ those; just point it at `test/*.test.ts`.
 | `streamLogs()` | Async generator of structured log entries |
 | `budgetStatus()` | Current session spend snapshot |
 | `vaultKeyNames()` | List stored key names (never values) |
+
+---
+
+Built and maintained by **[0xSemantic](https://github.com/0xSemantic)** —
+developer and visionary behind LOLA OS. Licensed under Apache-2.0.

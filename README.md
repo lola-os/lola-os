@@ -6,12 +6,15 @@
 </p>
 
 <p align="center">
-  <a href="https://test.pypi.org/project/lola-os/"><img src="https://img.shields.io/badge/PyPI-lola--os-3775A9?logo=pypi&logoColor=white" alt="PyPI"></a>
-  <a href="https://www.npmjs.com/package/lola-os"><img src="https://img.shields.io/badge/npm-lola--os-CB3837?logo=npm&logoColor=white" alt="npm"></a>
-  <a href="https://pkg.go.dev/github.com/lola-os/lola-go"><img src="https://img.shields.io/badge/Go-lola--go-00ADD8?logo=go&logoColor=white" alt="Go"></a>
+  <a href="https://pypi.org/project/lola-os/"><img src="https://img.shields.io/pypi/v/lola-os?logo=pypi&logoColor=white&label=PyPI" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/lola-os/"><img src="https://img.shields.io/pypi/dm/lola-os?logo=pypi&logoColor=white&label=downloads" alt="PyPI downloads"></a>
+  <a href="https://www.npmjs.com/package/lola-os"><img src="https://img.shields.io/npm/v/lola-os?logo=npm&logoColor=white&label=npm" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/lola-os"><img src="https://img.shields.io/npm/dm/lola-os?logo=npm&logoColor=white&label=downloads" alt="npm downloads"></a>
+  <a href="https://pkg.go.dev/github.com/lola-os/lola-go"><img src="https://pkg.go.dev/badge/github.com/lola-os/lola-go.svg" alt="Go Reference"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
+  <a href="https://github.com/lola-os/examples"><img src="https://img.shields.io/badge/examples-4_apps_+_snippets-111111" alt="Examples"></a>
+  <img src="https://img.shields.io/github/stars/lola-os/lola-os?style=flat&logo=github&label=stars" alt="GitHub stars">
   <img src="https://img.shields.io/badge/chains-40%2B-111111" alt="40+ chains">
-  <img src="https://img.shields.io/badge/EVM%20%2B%20Solana-supported-8250df" alt="EVM + Solana">
   <img src="https://img.shields.io/badge/runs-100%25%20local-2ea44f" alt="Runs locally">
 </p>
 

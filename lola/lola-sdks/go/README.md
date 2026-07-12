@@ -1,5 +1,9 @@
 # lola-go (Go SDK)
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/lola-os/lola-go.svg)](https://pkg.go.dev/github.com/lola-os/lola-go)
+![Go Report Card](https://goreportcard.com/badge/github.com/lola-os/lola-go?style=flat-square)
+![License](https://img.shields.io/badge/license-Apache_2.0-555555?labelColor=252525&style=flat-square)
+
 The Go SDK imports `lola-core` directly as a library — there's no
 subprocess, no JSON-RPC serialization overhead, just Go function calls
 into the same engine code the CLI uses.
@@ -108,3 +112,8 @@ See `example/main.go` for a complete runnable example (build with
 has no external dependencies. `client.go`'s actual engine calls are only
 exercisable once `lola-core` compiles, since the whole `lola` package
 (including the test binary) must compile against `pkg/sdk`.
+
+---
+
+Built and maintained by **[0xSemantic](https://github.com/0xSemantic)** —
+developer and visionary behind LOLA OS. Licensed under Apache-2.0.
