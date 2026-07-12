@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds / compiled output
+dist/
+dist-test/
+build/
+.next/
+out/
+bin/
+*.tsbuildinfo
+*.exe
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Go
+vendor/
+
+# LOLA runtime state / secrets
+.lola/
+lola.db
+vault.enc
+.env
+.env.local
+*.pem
+*.key
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
