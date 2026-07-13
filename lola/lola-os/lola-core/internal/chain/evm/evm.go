@@ -91,6 +91,11 @@ func New(ctx context.Context, cfg Config) (*Adapter, error) {
 func (a *Adapter) Name() string { return a.name }
 func (a *Adapter) Kind() string { return "evm" }
 
+// EVMClient exposes the underlying go-ethereum client so callers that need a
+// raw connection (e.g. the oracle's Chainlink aggregator reads) can reuse the
+// one this adapter already dialed, rather than opening a second connection.
+func (a *Adapter) EVMClient() *ethclient.Client { return a.client }
+
 // AddressFromKey derives the 0x-hex account address for an ECDSA private key.
 func (a *Adapter) AddressFromKey(privateKeyHex string) (string, error) {
 	key, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))

@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	abi "github.com/lola-os/lola-core/internal/abi"
 	"github.com/lola-os/lola-core/internal/budget"
 	"github.com/lola-os/lola-core/internal/chain"
@@ -26,18 +27,18 @@ import (
 
 // Deps bundles every component the RPC layer needs.
 type Deps struct {
-	Chains   chain.Set
-	Vault    *vault.Vault
-	Breaker  *budget.Breaker
-	Nonces   *nonce.Manager
-	Idem     *idempotency.Cache
-	Registry *registry.Registry
-	Oracle   *oracle.Gateway
-	Logger   *logging.Logger
-	Approver hitl.Approver
-	HITLOn   bool
+	Chains      chain.Set
+	Vault       *vault.Vault
+	Breaker     *budget.Breaker
+	Nonces      *nonce.Manager
+	Idem        *idempotency.Cache
+	Registry    *registry.Registry
+	Oracle      *oracle.Gateway
+	Logger      *logging.Logger
+	Approver    hitl.Approver
+	HITLOn      bool
 	HITLTimeout time.Duration
-	ReadOnly bool
+	ReadOnly    bool
 }
 
 // Register attaches every LOLA OS RPC method to server.
@@ -446,13 +447,37 @@ type getPriceParams struct {
 	Pair  string `json:"pair"`
 }
 
+// evmClientHolder is implemented by the EVM chain adapter, exposing the
+// underlying go-ethereum client so oracle reads (Chainlink aggregator calls)
+// can run against the same connection the adapter already dialed.
+type evmClientHolder interface {
+	EVMClient() *ethclient.Client
+}
+
 func (d *Deps) handleGetPrice(ctx context.Context, raw json.RawMessage) (interface{}, error) {
 	var p getPriceParams
 	if err := parseParams(raw, &p); err != nil {
 		return nil, jsonrpc.NewError(jsonrpc.CodeInvalidParams, err.Error(), nil)
 	}
-	return nil, jsonrpc.NewError(jsonrpc.CodeInternalError,
-		"get_price requires an active ethclient bound to an EVM chain; wire this via the chain's underlying client in main.go for your deployment", nil)
+	a, jerr := d.chainAdapter(p.Chain)
+	if jerr != nil {
+		return nil, jerr
+	}
+	holder, ok := a.(evmClientHolder)
+	if !ok || a.Kind() != "evm" {
+		return nil, jsonrpc.NewError(jsonrpc.CodeInvalidParams,
+			fmt.Sprintf("get_price is only supported on EVM chains (Chainlink feeds are read on-chain); %q is a %s chain", p.Chain, a.Kind()), nil)
+	}
+	res, err := d.Oracle.GetPrice(ctx, holder.EVMClient(), p.Pair)
+	if err != nil {
+		return nil, jsonrpc.NewError(jsonrpc.CodeRPCConnection, err.Error(), nil)
+	}
+	return map[string]interface{}{
+		"pair":       res.Pair,
+		"price":      res.Price,
+		"decimals":   res.Decimals,
+		"updated_at": res.UpdatedAt.UTC().Format(time.RFC3339),
+	}, nil
 }
 
 type fetchExternalAPIParams struct {
